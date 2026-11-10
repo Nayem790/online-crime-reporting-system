@@ -3,16 +3,14 @@
  * police/investigation.php
  *
  * Lets a police officer add a new investigation update for a report
- * that has already been Verified. Each submission inserts a new row
- * into investigations (the report can have many update records), and
- * keeps crime_reports.status in sync with the latest investigation
- * status so citizens see a consistent, current status.
+ * that has been Verified or Resolved. Allows advancing status through
+ * Investigating, Resolved, and final Closed states.
  */
 
 require_once __DIR__ . '/../includes/auth.php';
 require_role('police');
 
-$officerId = $_SESSION['user_id'];
+$officerId = (int) $_SESSION['user_id'];
 $reportId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
 if ($reportId <= 0) {
@@ -20,9 +18,18 @@ if ($reportId <= 0) {
     redirect('police/reports.php');
 }
 
+/**
+ * Professional case reference, e.g. CR-2026-00014
+ */
+if (!function_exists('format_case_id')) {
+    function format_case_id($reportId, $submittedAt) {
+        return sprintf('CR-%s-%05d', date('Y', strtotime($submittedAt)), (int) $reportId);
+    }
+}
+
 // ---- Fetch the report for context ----
 $stmt = $pdo->prepare(
-    'SELECT cr.report_id, cr.user_id, cr.title, cr.status, cc.category_name, citizen.full_name AS citizen_name
+    'SELECT cr.report_id, cr.user_id, cr.title, cr.status, cr.submitted_at, cc.category_name, citizen.full_name AS citizen_name
      FROM crime_reports cr
      JOIN crime_categories cc ON cr.category_id = cc.category_id
      JOIN users citizen ON cr.user_id = citizen.user_id
@@ -36,11 +43,12 @@ if (!$report) {
     redirect('police/reports.php');
 }
 
-$actionableStatuses = ['Verified', 'Investigating'];
+// Allow updates for Verified, Investigating, and Resolved cases
+$actionableStatuses = ['Verified', 'Investigating', 'Resolved'];
 
 if (!in_array($report['status'], $actionableStatuses, true)) {
-    $message = $report['status'] === 'Resolved'
-        ? 'This case is already resolved and cannot be updated further.'
+    $message = $report['status'] === 'Closed'
+        ? 'This case file is officially closed and archived.'
         : 'This report must be verified before investigation updates can be added.';
     set_flash_message('warning', $message);
     redirect('police/report_details.php?id=' . $reportId);
@@ -70,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = $_POST['status'] ?? '';
     $remarks = trim($_POST['remarks'] ?? '');
 
-    if (!in_array($status, $actionableStatuses, true)) {
+    if (!in_array($status, ['Investigating', 'Resolved', 'Closed'], true)) {
         $errors[] = 'Please select a valid investigation status.';
     }
 
@@ -79,11 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        // Guard against the report having been resolved/changed by another
-        // action between page load and submission.
+        // Update master status across actionable states
         $syncStmt = $pdo->prepare(
             'UPDATE crime_reports SET status = :status
-             WHERE report_id = :report_id AND status IN ("Verified", "Investigating")'
+             WHERE report_id = :report_id AND status IN ("Verified", "Investigating", "Resolved")'
         );
         $syncStmt->execute([
             ':status'    => $status,
@@ -118,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'Investigation - Report #' . $reportId;
+$pageTitle = 'Investigation Update - ' . format_case_id($report['report_id'], $report['submitted_at']);
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -126,18 +133,29 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <a href="<?php echo BASE_URL; ?>police/report_details.php?id=<?php echo $reportId; ?>"
-               class="text-decoration-none small text-muted d-inline-block mb-2">
-                <i class="bi bi-arrow-left"></i> Back to Report Details
+               class="text-decoration-none small text-muted d-inline-block mb-3">
+                <i class="bi bi-arrow-left me-1"></i> Back to Report Details
             </a>
-            <h1 class="h3 mb-1">Investigation Update</h1>
-            <p class="text-muted mb-4">
-                <?php echo sanitize_input($report['title']); ?>
-                &middot; Reported by <?php echo sanitize_input($report['citizen_name']); ?>
-                &middot; <?php echo sanitize_input($report['category_name']); ?>
-            </p>
+            
+            <div class="mb-4">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-dark">
+                        <?php echo sanitize_input(format_case_id($report['report_id'], $report['submitted_at'])); ?>
+                    </span>
+                    <span class="badge <?php echo get_status_badge_class($report['status']); ?>">
+                        <?php echo sanitize_input($report['status']); ?>
+                    </span>
+                </div>
+                <h1 class="h3 mb-1">Log Investigation Update</h1>
+                <p class="text-muted mb-0">
+                    <?php echo sanitize_input($report['title']); ?> 
+                    &middot; <span class="text-dark fw-medium">Citizen:</span> <?php echo sanitize_input($report['citizen_name']); ?> 
+                    &middot; <span class="badge bg-light text-dark border"><?php echo sanitize_input($report['category_name']); ?></span>
+                </p>
+            </div>
 
             <?php if (!empty($errors)): ?>
-                <div class="alert alert-danger">
+                <div class="alert alert-danger shadow-sm mb-4">
                     <ul class="mb-0 ps-3">
                         <?php foreach ($errors as $error): ?>
                             <li><?php echo sanitize_input($error); ?></li>
@@ -148,10 +166,12 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- ================= EXISTING INVESTIGATION HISTORY ================= -->
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white fw-semibold">Investigation History</div>
+                <div class="card-header bg-white py-3 fw-semibold">
+                    <i class="bi bi-clock-history me-2 text-primary"></i>Investigation Timeline History
+                </div>
                 <div class="card-body">
                     <?php if (empty($investigations)): ?>
-                        <p class="text-muted mb-0">No investigation updates have been recorded yet. This will be the first.</p>
+                        <p class="text-muted mb-0">No investigation updates have been recorded yet. This will be the first entry.</p>
                     <?php else: ?>
                         <ul class="list-unstyled mb-0">
                             <?php foreach ($investigations as $index => $update): ?>
@@ -162,8 +182,8 @@ require_once __DIR__ . '/../includes/header.php';
                                         </span>
                                         <span class="text-muted small"><?php echo format_date($update['updated_at'], 'M d, Y h:i A'); ?></span>
                                     </div>
-                                    <p class="mb-1"><?php echo nl2br(sanitize_input($update['remarks'] ?? '')); ?></p>
-                                    <p class="text-muted small mb-0">Officer: <?php echo sanitize_input($update['officer_name']); ?></p>
+                                    <p class="mb-1 text-dark"><?php echo nl2br(sanitize_input($update['remarks'] ?? '')); ?></p>
+                                    <p class="text-muted small mb-0"><i class="bi bi-person-badge me-1"></i>Investigating Officer: <?php echo sanitize_input($update['officer_name']); ?></p>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
@@ -173,36 +193,44 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- ================= NEW UPDATE FORM ================= -->
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold">Add New Update</div>
+                <div class="card-header bg-white py-3 fw-semibold">
+                    <i class="bi bi-plus-circle me-2 text-success"></i>Add New Investigation Remark
+                </div>
                 <div class="card-body">
                     <form method="POST" action="<?php echo BASE_URL; ?>police/investigation.php?id=<?php echo $reportId; ?>" novalidate>
                         <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
 
                         <div class="mb-3">
-                            <label for="status" class="form-label">Investigation Status</label>
+                            <label for="status" class="form-label fw-medium">Update Case Status</label>
                             <select class="form-select" id="status" name="status" required>
-                                <option value="">-- Select status --</option>
+                                <option value="">-- Select next status --</option>
                                 <option value="Investigating" <?php echo $status === 'Investigating' ? 'selected' : ''; ?>>
-                                    Investigating (case still in progress)
+                                    Investigating (Active progress)
                                 </option>
                                 <option value="Resolved" <?php echo $status === 'Resolved' ? 'selected' : ''; ?>>
-                                    Resolved (case closed)
+                                    Resolved (Investigation findings completed)
+                                </option>
+                                <option value="Closed" <?php echo $status === 'Closed' ? 'selected' : ''; ?>>
+                                    Closed (Finalize and officially close case file)
                                 </option>
                             </select>
+                            <div class="form-text">Selecting "Closed" will officially archive the case file and set the final timeline step in the citizen portal.</div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="remarks" class="form-label">Remarks</label>
+                        <div class="mb-4">
+                            <label for="remarks" class="form-label fw-medium">Officer Investigation Remarks</label>
                             <textarea class="form-control" id="remarks" name="remarks" rows="4" required
-                                      placeholder="Describe the current findings or progress"><?php echo sanitize_input($remarks); ?></textarea>
+                                      placeholder="Provide detailed progress notes, clues, or final case closure remarks (minimum 5 characters)"><?php echo sanitize_input($remarks); ?></textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-clipboard-plus me-1"></i> Save Update
-                        </button>
-                        <a href="<?php echo BASE_URL; ?>police/report_details.php?id=<?php echo $reportId; ?>" class="btn btn-outline-secondary">
-                            Cancel
-                        </a>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-check-lg me-1"></i> Save Investigation Update
+                            </button>
+                            <a href="<?php echo BASE_URL; ?>police/report_details.php?id=<?php echo $reportId; ?>" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
                     </form>
                 </div>
             </div>

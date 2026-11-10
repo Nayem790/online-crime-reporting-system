@@ -190,6 +190,41 @@ INSERT INTO help_resources (title, resource_type, content, contact_info) VALUES
  'The current version of the system requires a registered account so officers can follow up and update you on your case.',
  NULL);
 
+ 
+USE crime_reporting_system;
+
+CREATE TABLE IF NOT EXISTS case_status_history (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    report_id INT NOT NULL,
+
+    previous_status VARCHAR(50) DEFAULT NULL,
+
+    new_status VARCHAR(50) NOT NULL,
+
+    remarks TEXT DEFAULT NULL,
+
+    changed_by INT DEFAULT NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_history_report
+        FOREIGN KEY (report_id)
+        REFERENCES crime_reports(report_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_history_user
+        FOREIGN KEY (changed_by)
+        REFERENCES users(user_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+
+    INDEX idx_history_report (report_id),
+    INDEX idx_history_created (created_at)
+) ENGINE=InnoDB;
+
+
 -- ============================================================
 -- NOTE ON DEFAULT ADMIN LOGIN
 -- Email:    admin@crms.local

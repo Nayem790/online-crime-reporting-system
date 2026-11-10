@@ -3,11 +3,8 @@
  * citizen/report_details.php
  *
  * Shows full details of one crime report: crime info, category,
- * evidence, verification info, and investigation updates.
- *
- * Ownership is enforced directly in the SQL WHERE clause (user_id
- * must match the logged-in citizen), so a citizen can never view --
- * or even detect the existence of -- another citizen's report.
+ * evidence, verification info, investigation updates, and the 
+ * Executive Visual Case Tracking Stepper with Print/PDF Export.
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -57,50 +54,147 @@ $pageTitle = 'Report #' . $reportId;
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="container">
+<!-- Print Styling & Clean Professional Text Alignment Fix -->
+<style>
+@media print {
+    body { background-color: #ffffff !important; color: #000000 !important; }
+    .navbar, footer, .btn, a[href], .no-print { display: none !important; }
+    .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; margin-bottom: 1rem !important; }
+    .container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+}
+.remarks-box {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal !important;
+    text-align: left !important;
+}
+</style>
+
+<div class="container py-4">
+    <!-- Top Header Zone -->
     <div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-2">
         <div>
-            <a href="<?php echo BASE_URL; ?>citizen/report_history.php" class="text-decoration-none small text-muted d-inline-block mb-2">
+            <a href="<?php echo BASE_URL; ?>citizen/report_history.php" class="text-decoration-none small text-muted d-inline-block mb-2 no-print">
                 <i class="bi bi-arrow-left"></i> Back to Report History
             </a>
-            <h1 class="h3 mb-1"><?php echo sanitize_input($report['title']); ?></h1>
-            <span class="text-muted">Report #<?php echo (int) $report['report_id']; ?></span>
+            <h1 class="h3 mb-1 fw-bold text-dark"><?php echo sanitize_input($report['title']); ?></h1>
+            <span class="text-muted">Report #<?php echo (int) $report['report_id']; ?> (CR-<?php echo date('Y', strtotime($report['submitted_at'])); ?>-<?php echo str_pad($report['report_id'], 5, '0', STR_PAD_LEFT); ?>)</span>
         </div>
-        <span class="badge fs-6 <?php echo get_status_badge_class($report['status']); ?>">
-            <?php echo sanitize_input($report['status']); ?>
-        </span>
+        <div>
+            <span class="badge fs-6 px-3 py-2 shadow-sm <?php echo get_status_badge_class($report['status']); ?>">
+                <?php echo sanitize_input($report['status']); ?>
+            </span>
+        </div>
     </div>
+
+    <!-- ================= VISUAL CASE TRACKING STEPPER ================= -->
+    <?php
+    $currentStatus = $report['status'];
+    
+    $steps = [
+        ['label' => 'Submitted', 'icon' => 'bi-file-earmark-text', 'state' => 'completed'],
+        ['label' => 'Verified', 'icon' => 'bi-shield-check', 'state' => 'pending'],
+        ['label' => 'Under Investigation', 'icon' => 'bi-search', 'state' => 'pending'],
+        ['label' => 'Resolved', 'icon' => 'bi-check2-circle', 'state' => 'pending'],
+        ['label' => 'Closed', 'icon' => 'bi-archive', 'state' => 'pending']
+    ];
+
+    if ($currentStatus === 'Rejected') {
+        $steps = [
+            ['label' => 'Submitted', 'icon' => 'bi-file-earmark-text', 'state' => 'completed'],
+            ['label' => 'Rejected', 'icon' => 'bi-x-circle', 'state' => 'rejected']
+        ];
+    } else {
+        foreach ($steps as $index => $step) {
+            $label = $step['label'];
+            if ($label === 'Submitted') {
+                $steps[$index]['state'] = 'completed';
+                $steps[$index]['meta'] = format_date($report['submitted_at'], 'M d, Y');
+            } elseif ($label === 'Verified') {
+                if (in_array($currentStatus, ['Verified', 'Investigating', 'Resolved', 'Closed'])) {
+                    $steps[$index]['state'] = 'completed';
+                    if (!empty($report['verified_at'])) {
+                        $steps[$index]['meta'] = format_date($report['verified_at'], 'M d, Y');
+                    }
+                } elseif ($currentStatus === 'Pending') {
+                    $steps[$index]['state'] = 'active';
+                }
+            } elseif ($label === 'Under Investigation') {
+                if (in_array($currentStatus, ['Investigating', 'Resolved', 'Closed'])) {
+                    $steps[$index]['state'] = 'completed';
+                } elseif ($currentStatus === 'Verified') {
+                    $steps[$index]['state'] = 'active';
+                }
+            } elseif ($label === 'Resolved') {
+                if (in_array($currentStatus, ['Resolved', 'Closed'])) {
+                    $steps[$index]['state'] = 'completed';
+                } elseif ($currentStatus === 'Investigating') {
+                    $steps[$index]['state'] = 'active';
+                }
+            } elseif ($label === 'Closed') {
+                if ($currentStatus === 'Closed') {
+                    $steps[$index]['state'] = 'completed';
+                } elseif ($currentStatus === 'Resolved') {
+                    $steps[$index]['state'] = 'active';
+                }
+            }
+        }
+    }
+    ?>
+
+    <div class="tracking-container mb-4">
+        <ul class="tracking-steps">
+            <?php foreach ($steps as $s): ?>
+                <li class="tracking-step <?php echo $s['state']; ?>">
+                    <span class="step-circle">
+                        <i class="bi <?php echo $s['icon']; ?>"></i>
+                    </span>
+                    <span class="step-label"><?php echo $s['label']; ?></span>
+                    <?php if (!empty($s['meta'])): ?>
+                        <span class="step-meta"><?php echo $s['meta']; ?></span>
+                    <?php endif; ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <!-- ================= END TRACKING STEPPER ================= -->
 
     <div class="row g-4">
         <div class="col-lg-8">
 
             <!-- ================= CRIME INFORMATION ================= -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white fw-semibold">Crime Information</div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-4">Category</dt>
-                        <dd class="col-sm-8"><?php echo sanitize_input($report['category_name']); ?></dd>
+            <div class="card border-0 shadow-sm mb-4 rounded-4">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold text-dark"><i class="bi bi-info-circle text-primary me-2"></i>Crime Information Summary</span>
+                    <!-- Print / PDF Download Button placed professionally inside card header -->
+                    <button onclick="window.print()" class="btn btn-outline-dark btn-sm px-3 rounded-3 shadow-sm no-print">
+                        <i class="bi bi-printer me-1"></i> Print / Export PDF
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <dl class="row mb-0 g-3">
+                        <dt class="col-sm-4 text-muted">Category</dt>
+                        <dd class="col-sm-8 fw-semibold text-dark"><?php echo sanitize_input($report['category_name']); ?></dd>
 
-                        <dt class="col-sm-4">Incident Location</dt>
-                        <dd class="col-sm-8"><?php echo sanitize_input($report['incident_location']); ?></dd>
+                        <dt class="col-sm-4 text-muted">Incident Location</dt>
+                        <dd class="col-sm-8 text-dark"><?php echo sanitize_input($report['incident_location']); ?></dd>
 
-                        <dt class="col-sm-4">Incident Date</dt>
-                        <dd class="col-sm-8"><?php echo format_date($report['incident_date'], 'M d, Y'); ?></dd>
+                        <dt class="col-sm-4 text-muted">Incident Date</dt>
+                        <dd class="col-sm-8 text-dark"><?php echo format_date($report['incident_date'], 'M d, Y'); ?></dd>
 
-                        <dt class="col-sm-4">Submitted On</dt>
-                        <dd class="col-sm-8"><?php echo format_date($report['submitted_at'], 'M d, Y h:i A'); ?></dd>
+                        <dt class="col-sm-4 text-muted">Submitted On</dt>
+                        <dd class="col-sm-8 text-dark"><?php echo format_date($report['submitted_at'], 'M d, Y h:i A'); ?></dd>
 
-                        <dt class="col-sm-4">Description</dt>
-                        <dd class="col-sm-8" style="white-space: pre-wrap;"><?php echo sanitize_input($report['description']); ?></dd>
+                        <dt class="col-sm-4 text-muted">Description</dt>
+                        <dd class="col-sm-8 text-dark remarks-box"><?php echo sanitize_input($report['description']); ?></dd>
                     </dl>
                 </div>
             </div>
 
             <!-- ================= EVIDENCE ================= -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white fw-semibold">Evidence</div>
-                <div class="card-body">
+            <div class="card border-0 shadow-sm mb-4 rounded-4">
+                <div class="card-header bg-white py-3 px-4 fw-semibold">Attached Evidence Files</div>
+                <div class="card-body p-4">
                     <?php if (empty($evidenceFiles)): ?>
                         <p class="text-muted mb-0">No evidence files were uploaded with this report.</p>
                     <?php else: ?>
@@ -109,14 +203,14 @@ require_once __DIR__ . '/../includes/header.php';
                                 <?php
                                     $isImage = in_array(strtolower($evidence['file_type']), ['jpg', 'jpeg', 'png'], true);
                                 ?>
-                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
                                     <span>
                                         <i class="bi <?php echo $isImage ? 'bi-file-image' : 'bi-file-earmark-pdf'; ?> me-2"></i>
                                         <?php echo sanitize_input($evidence['file_name']); ?>
                                         <span class="text-muted small ms-2"><?php echo format_date($evidence['uploaded_at'], 'M d, Y'); ?></span>
                                     </span>
                                     <a href="<?php echo BASE_URL . sanitize_input($evidence['file_path']); ?>"
-                                       target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
+                                       target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary no-print">
                                         View
                                     </a>
                                 </li>
@@ -127,9 +221,9 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
 
             <!-- ================= INVESTIGATION UPDATES ================= -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold">Investigation Updates</div>
-                <div class="card-body">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white py-3 px-4 fw-semibold">Investigation Progress Logs</div>
+                <div class="card-body p-4">
                     <?php if (empty($investigations)): ?>
                         <p class="text-muted mb-0">
                             <?php echo $report['status'] === 'Pending'
@@ -146,7 +240,7 @@ require_once __DIR__ . '/../includes/header.php';
                                         </span>
                                         <span class="text-muted small"><?php echo format_date($update['updated_at'], 'M d, Y h:i A'); ?></span>
                                     </div>
-                                    <p class="mb-1"><?php echo nl2br(sanitize_input($update['remarks'] ?? '')); ?></p>
+                                    <p class="mb-1 remarks-box"><?php echo sanitize_input($update['remarks'] ?? ''); ?></p>
                                     <p class="text-muted small mb-0">Officer: <?php echo sanitize_input($update['officer_name']); ?></p>
                                 </li>
                             <?php endforeach; ?>
@@ -159,26 +253,26 @@ require_once __DIR__ . '/../includes/header.php';
 
         <div class="col-lg-4">
             <!-- ================= VERIFICATION INFORMATION ================= -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold">Verification Information</div>
-                <div class="card-body">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white py-3 px-4 fw-semibold">Verification Details</div>
+                <div class="card-body p-4">
                     <?php if ($report['status'] === 'Pending'): ?>
                         <p class="text-muted mb-0">
                             <i class="bi bi-hourglass-split me-1"></i>
-                            This report is awaiting review by a police officer.
+                            This report is currently awaiting triage and review by a police officer.
                         </p>
                     <?php else: ?>
                         <dl class="mb-0">
-                            <dt class="small text-muted">Verified By</dt>
-                            <dd><?php echo sanitize_input($report['verifier_name'] ?? 'N/A'); ?></dd>
+                            <dt class="small text-muted mb-1">Verified By Officer</dt>
+                            <dd class="mb-3 fw-semibold text-dark"><?php echo sanitize_input($report['verifier_name'] ?? 'N/A'); ?></dd>
 
-                            <dt class="small text-muted">Verified On</dt>
-                            <dd><?php echo format_date($report['verified_at']); ?></dd>
+                            <dt class="small text-muted mb-1">Verification Date</dt>
+                            <dd class="mb-3 text-dark"><?php echo !empty($report['verified_at']) ? format_date($report['verified_at'], 'M d, Y h:i A') : 'N/A'; ?></dd>
 
-                            <dt class="small text-muted">Remarks</dt>
-                            <dd class="mb-0" style="white-space: pre-wrap;">
+                            <dt class="small text-muted mb-1">Official Verification Remarks</dt>
+                            <dd class="mb-0 remarks-box p-3 bg-light rounded-3 border text-dark">
                                 <?php echo $report['verification_remarks']
-                                    ? nl2br(sanitize_input($report['verification_remarks']))
+                                    ? sanitize_input($report['verification_remarks'])
                                     : 'No remarks provided.'; ?>
                             </dd>
                         </dl>

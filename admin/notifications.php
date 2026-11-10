@@ -15,9 +15,19 @@ require_role('admin');
 
 $adminId = $_SESSION['user_id'];
 
+/**
+ * Professional case reference format, e.g. CR-2026-00014
+ */
+if (!function_exists('format_case_id')) {
+    function format_case_id($reportId, $submittedAt) {
+        return sprintf('CR-%s-%05d', date('Y', strtotime($submittedAt)), (int) $reportId);
+    }
+}
+
 // ---- Fetch all notifications for this admin, newest first ----
 $stmt = $pdo->prepare(
-    'SELECT n.notification_id, n.report_id, n.message, n.is_read, n.created_at, cr.title AS report_title
+    'SELECT n.notification_id, n.report_id, n.message, n.is_read, n.created_at, 
+            cr.title AS report_title, cr.submitted_at
      FROM notifications n
      JOIN crime_reports cr ON n.report_id = cr.report_id
      WHERE n.user_id = :uid
@@ -53,7 +63,10 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php else: ?>
                         <ul class="list-group list-group-flush">
                             <?php foreach ($notifications as $notification): ?>
-                                <?php $wasUnread = (int) $notification['is_read'] === 0; ?>
+                                <?php 
+                                    $wasUnread = (int) $notification['is_read'] === 0; 
+                                    $caseIdFormatted = format_case_id($notification['report_id'], $notification['submitted_at']);
+                                ?>
                                 <li class="list-group-item d-flex justify-content-between align-items-start <?php echo $wasUnread ? 'bg-light' : ''; ?>">
                                     <div class="me-3">
                                         <?php if ($wasUnread): ?>
@@ -65,8 +78,8 @@ require_once __DIR__ . '/../includes/header.php';
                                         <div class="small text-muted mt-1">
                                             <?php echo format_date($notification['created_at'], 'M d, Y h:i A'); ?>
                                             &middot;
-                                            <a href="<?php echo BASE_URL; ?>admin/reports.php?search=<?php echo urlencode($notification['report_title']); ?>">
-                                                View "<?php echo sanitize_input($notification['report_title']); ?>"
+                                            <a href="<?php echo BASE_URL; ?>admin/reports.php?search=<?php echo urlencode($caseIdFormatted); ?>">
+                                                View Case <?php echo sanitize_input($caseIdFormatted); ?> ("<?php echo sanitize_input($notification['report_title']); ?>")
                                             </a>
                                         </div>
                                     </div>

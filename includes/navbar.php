@@ -9,9 +9,9 @@
 
 $navRole = $_SESSION['role'] ?? null;
 
-// Unread notification count for a logged-in citizen (small, targeted query).
+// Unread notification count for logged-in citizen or police officer (small, targeted query).
 $unreadNotifications = 0;
-if ($navRole === 'citizen' && isset($pdo)) {
+if (($navRole === 'citizen' || $navRole === 'police') && isset($pdo)) {
     $stmt = $pdo->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = 0');
     $stmt->execute([':uid' => $_SESSION['user_id']]);
     $unreadNotifications = (int) $stmt->fetchColumn();
@@ -41,7 +41,7 @@ if ($navRole) {
                     <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>citizen/report_history.php">My Reports</a></li>
                     <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>citizen/help.php">Help &amp; Resources</a></li>
                     <li class="nav-item">
-                        <a class="nav-link position-relative" href="<?php echo BASE_URL; ?>citizen/notifications.php">
+                        <a class="nav-link position-relative" href="<?php echo BASE_URL; ?>citizen/notifications.php" title="Notifications">
                             <i class="bi bi-bell-fill"></i>
                             <?php if ($unreadNotifications > 0): ?>
                                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem;">
@@ -55,6 +55,17 @@ if ($navRole) {
                 <?php elseif ($navRole === 'police'): ?>
                     <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>police/dashboard.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>police/reports.php">Crime Reports</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="<?php echo BASE_URL; ?>police/notifications.php" title="Notifications">
+                            <i class="bi bi-bell-fill"></i>
+                            <?php if ($unreadNotifications > 0): ?>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem;">
+                                    <?php echo $unreadNotifications; ?>
+                                    <span class="visually-hidden">unread notifications</span>
+                                </span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
 
                 <?php elseif ($navRole === 'admin'): ?>
                     <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>admin/dashboard.php">Dashboard</a></li>

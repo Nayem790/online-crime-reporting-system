@@ -3,15 +3,14 @@
  * police/verify_report.php
  *
  * Lets a police officer verify or reject a Pending crime report.
- * Updates crime_reports.status/verified_by/verified_at/verification_remarks
- * and creates a notification for the citizen who submitted it.
- * Only reports currently in "Pending" status can be acted on here.
+ * Updates crime_reports status/verified_by/verified_at/verification_remarks
+ * and creates a notification for the citizen in Executive Portal design.
  */
 
 require_once __DIR__ . '/../includes/auth.php';
 require_role('police');
 
-$officerId = $_SESSION['user_id'];
+$officerId = (int) $_SESSION['user_id'];
 $reportId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
 if ($reportId <= 0) {
@@ -19,9 +18,18 @@ if ($reportId <= 0) {
     redirect('police/reports.php');
 }
 
+/**
+ * Professional case reference, e.g. CR-2026-00014
+ */
+if (!function_exists('format_case_id')) {
+    function format_case_id($reportId, $submittedAt) {
+        return sprintf('CR-%s-%05d', date('Y', strtotime($submittedAt)), (int) $reportId);
+    }
+}
+
 // ---- Fetch the report with citizen/category info for context ----
 $stmt = $pdo->prepare(
-    'SELECT cr.report_id, cr.user_id, cr.title, cr.description, cr.incident_location, cr.incident_date, cr.status,
+    'SELECT cr.report_id, cr.user_id, cr.title, cr.description, cr.incident_location, cr.incident_date, cr.status, cr.submitted_at,
             cc.category_name, citizen.full_name AS citizen_name
      FROM crime_reports cr
      JOIN crime_categories cc ON cr.category_id = cc.category_id
@@ -63,8 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        // WHERE status = 'Pending' guards against a race condition where the
-        // report was already verified/rejected by another action in the meantime.
         $updateStmt = $pdo->prepare(
             'UPDATE crime_reports
              SET status = :status, verified_by = :verified_by, verified_at = NOW(), verification_remarks = :remarks
@@ -93,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'Verify Report #' . $reportId;
+$pageTitle = 'Triage Verification - ' . format_case_id($report['report_id'], $report['submitted_at']);
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -101,13 +107,23 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <a href="<?php echo BASE_URL; ?>police/report_details.php?id=<?php echo $reportId; ?>"
-               class="text-decoration-none small text-muted d-inline-block mb-2">
-                <i class="bi bi-arrow-left"></i> Back to Report Details
+               class="text-decoration-none small text-muted d-inline-block mb-3">
+                <i class="bi bi-arrow-left me-1"></i> Back to Report Details
             </a>
-            <h1 class="h3 mb-4">Verify / Reject Report</h1>
+
+            <div class="mb-4">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-dark">
+                        <?php echo sanitize_input(format_case_id($report['report_id'], $report['submitted_at'])); ?>
+                    </span>
+                    <span class="badge bg-warning text-dark">Pending Triage</span>
+                </div>
+                <h1 class="h3 mb-1">Verify or Reject Incident Report</h1>
+                <p class="text-muted mb-0">Review the details below and record your official triage decision.</p>
+            </div>
 
             <?php if (!empty($errors)): ?>
-                <div class="alert alert-danger">
+                <div class="alert alert-danger shadow-sm mb-4">
                     <ul class="mb-0 ps-3">
                         <?php foreach ($errors as $error): ?>
                             <li><?php echo sanitize_input($error); ?></li>
@@ -118,68 +134,84 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- ================= REPORT SUMMARY ================= -->
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white fw-semibold">Report Summary</div>
+                <div class="card-header bg-white py-3 fw-semibold">
+                    <i class="bi bi-file-earmark-text text-primary me-2"></i>Incident Summary
+                </div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-sm-3">Title</dt>
-                        <dd class="col-sm-9"><?php echo sanitize_input($report['title']); ?></dd>
+                        <dt class="col-sm-3 text-muted">Title</dt>
+                        <dd class="col-sm-9 fw-medium text-dark"><?php echo sanitize_input($report['title']); ?></dd>
 
-                        <dt class="col-sm-3">Citizen</dt>
+                        <dt class="col-sm-3 text-muted">Reporter</dt>
                         <dd class="col-sm-9"><?php echo sanitize_input($report['citizen_name']); ?></dd>
 
-                        <dt class="col-sm-3">Category</dt>
-                        <dd class="col-sm-9"><?php echo sanitize_input($report['category_name']); ?></dd>
+                        <dt class="col-sm-3 text-muted">Category</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-light text-dark border"><?php echo sanitize_input($report['category_name']); ?></span>
+                        </dd>
 
-                        <dt class="col-sm-3">Location</dt>
+                        <dt class="col-sm-3 text-muted">Location</dt>
                         <dd class="col-sm-9"><?php echo sanitize_input($report['incident_location']); ?></dd>
 
-                        <dt class="col-sm-3">Incident Date</dt>
+                        <dt class="col-sm-3 text-muted">Incident Date</dt>
                         <dd class="col-sm-9"><?php echo format_date($report['incident_date'], 'M d, Y'); ?></dd>
 
-                        <dt class="col-sm-3">Description</dt>
-                        <dd class="col-sm-9 mb-0" style="white-space: pre-wrap;"><?php echo sanitize_input($report['description']); ?></dd>
+                        <dt class="col-sm-3 text-muted">Description</dt>
+                        <dd class="col-sm-9 mb-0 text-dark" style="white-space: pre-wrap;"><?php echo sanitize_input($report['description']); ?></dd>
                     </dl>
                 </div>
             </div>
 
             <!-- ================= DECISION FORM ================= -->
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold">Your Decision</div>
+                <div class="card-header bg-white py-3 fw-semibold">
+                    <i class="bi bi-shield-lock text-primary me-2"></i>Official Police Triage Decision
+                </div>
                 <div class="card-body">
                     <form method="POST" action="<?php echo BASE_URL; ?>police/verify_report.php?id=<?php echo $reportId; ?>" novalidate>
                         <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
 
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="decision" id="decisionVerify"
-                                       value="Verified" <?php echo $decision === 'Verified' ? 'checked' : ''; ?> required>
-                                <label class="form-check-label text-success fw-semibold" for="decisionVerify">
-                                    <i class="bi bi-check-circle-fill me-1"></i> Verify Report
-                                </label>
-                                <div class="form-text ms-4">The report is legitimate and will proceed to investigation.</div>
+                        <div class="mb-4">
+                            <label class="form-label fw-medium text-dark mb-3">Select Triage Action</label>
+                            
+                            <div class="card border p-3 mb-3 bg-light-subtle">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="decision" id="decisionVerify"
+                                           value="Verified" <?php echo $decision === 'Verified' ? 'checked' : ''; ?> required>
+                                    <label class="form-check-label text-success fw-semibold" for="decisionVerify">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Verify Report
+                                    </label>
+                                    <div class="form-text ms-4 text-muted">The incident report is assessed as legitimate and will proceed to active investigation.</div>
+                                </div>
                             </div>
-                            <div class="form-check mt-2">
-                                <input class="form-check-input" type="radio" name="decision" id="decisionReject"
-                                       value="Rejected" <?php echo $decision === 'Rejected' ? 'checked' : ''; ?> required>
-                                <label class="form-check-label text-danger fw-semibold" for="decisionReject">
-                                    <i class="bi bi-x-circle-fill me-1"></i> Reject Report
-                                </label>
-                                <div class="form-text ms-4">The report does not meet the criteria for investigation.</div>
+
+                            <div class="card border p-3 bg-light-subtle">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="decision" id="decisionReject"
+                                           value="Rejected" <?php echo $decision === 'Rejected' ? 'checked' : ''; ?> required>
+                                    <label class="form-check-label text-danger fw-semibold" for="decisionReject">
+                                        <i class="bi bi-x-circle-fill me-1"></i> Reject Report
+                                    </label>
+                                    <div class="form-text ms-4 text-muted">The report lacks credibility or does not meet criminal criteria for official investigation.</div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="remarks" class="form-label">Verification Remarks</label>
+                        <div class="mb-4">
+                            <label for="remarks" class="form-label fw-medium text-dark">Verification / Rejection Remarks</label>
                             <textarea class="form-control" id="remarks" name="remarks" rows="4" required
-                                      placeholder="Explain your decision"><?php echo sanitize_input($remarks); ?></textarea>
+                                      placeholder="Provide formal explanation or justification for this decision (minimum 5 characters)"><?php echo sanitize_input($remarks); ?></textarea>
+                            <div class="form-text">These remarks will be securely recorded and visible to the reporting citizen.</div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check2-square me-1"></i> Submit Decision
-                        </button>
-                        <a href="<?php echo BASE_URL; ?>police/report_details.php?id=<?php echo $reportId; ?>" class="btn btn-outline-secondary">
-                            Cancel
-                        </a>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-check2-square me-1"></i> Submit Triage Decision
+                            </button>
+                            <a href="<?php echo BASE_URL; ?>police/report_details.php?id=<?php echo $reportId; ?>" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
                     </form>
                 </div>
             </div>

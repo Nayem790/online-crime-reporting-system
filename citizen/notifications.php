@@ -13,9 +13,19 @@ require_role('citizen');
 
 $userId = $_SESSION['user_id'];
 
+/**
+ * Professional case reference, e.g. CR-2026-00014
+ */
+if (!function_exists('format_case_id')) {
+    function format_case_id($reportId, $submittedAt) {
+        return sprintf('CR-%s-%05d', date('Y', strtotime($submittedAt)), (int) $reportId);
+    }
+}
+
 // ---- Fetch all notifications for this citizen, newest first ----
 $stmt = $pdo->prepare(
-    'SELECT n.notification_id, n.report_id, n.message, n.is_read, n.created_at, cr.title AS report_title
+    'SELECT n.notification_id, n.report_id, n.message, n.is_read, n.created_at, 
+            cr.title AS report_title, cr.submitted_at
      FROM notifications n
      JOIN crime_reports cr ON n.report_id = cr.report_id
      WHERE n.user_id = :uid
@@ -64,7 +74,7 @@ require_once __DIR__ . '/../includes/header.php';
                                             <?php echo format_date($notification['created_at'], 'M d, Y h:i A'); ?>
                                             &middot;
                                             <a href="<?php echo BASE_URL; ?>citizen/report_details.php?id=<?php echo (int) $notification['report_id']; ?>">
-                                                View "<?php echo sanitize_input($notification['report_title']); ?>"
+                                                View Case <?php echo sanitize_input(format_case_id($notification['report_id'], $notification['submitted_at'])); ?>
                                             </a>
                                         </div>
                                     </div>

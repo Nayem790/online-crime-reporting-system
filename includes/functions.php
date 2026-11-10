@@ -167,3 +167,55 @@ function create_notification(PDO $pdo, $user_id, $report_id, $message) {
         ':message'   => $message,
     ]);
 }
+
+
+/**
+ * Add a new case status change to the history table.
+ */
+function create_case_status_history(
+    PDO $pdo,
+    $report_id,
+    $previous_status,
+    $new_status,
+    $remarks = null,
+    $changed_by = null
+) {
+    $sql = "INSERT INTO case_status_history
+            (report_id, previous_status, new_status, remarks, changed_by)
+            VALUES
+            (:report_id, :previous_status, :new_status, :remarks, :changed_by)";
+
+    $stmt = $pdo->prepare($sql);
+
+    return $stmt->execute([
+        ':report_id'       => $report_id,
+        ':previous_status' => $previous_status,
+        ':new_status'      => $new_status,
+        ':remarks'         => $remarks,
+        ':changed_by'      => $changed_by
+    ]);
+}
+
+
+/**
+ * Get the complete status history of a case.
+ */
+function get_case_status_history(PDO $pdo, $report_id) {
+    $sql = "SELECT
+                h.history_id,
+                h.previous_status,
+                h.new_status,
+                h.remarks,
+                h.created_at,
+                u.full_name AS changed_by_name,
+                u.role AS changed_by_role
+            FROM case_status_history h
+            LEFT JOIN users u ON h.changed_by = u.user_id
+            WHERE h.report_id = :report_id
+            ORDER BY h.created_at ASC, h.history_id ASC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':report_id' => $report_id]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}

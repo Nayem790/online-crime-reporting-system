@@ -1,67 +1,152 @@
-/* ============================================================
+/* ==========================================================================
    Online Crime Reporting and Case Management System
-   Global stylesheet -- layers on top of Bootstrap 5 (loaded via CDN
-   in includes/header.php / includes/footer.php).
+   assets/css/style.css  --  Executive portal theme (v2)
 
-   Approach: override Bootstrap 5.3's CSS custom properties (--bs-*)
-   wherever possible so every component that already uses Bootstrap
-   utility classes (bg-primary, btn-primary, badges, alerts, forms,
-   progress bars, etc.) automatically picks up the brand colors --
-   no PHP markup needs to change for this to take effect.
-   ============================================================ */
+   Layers on top of Bootstrap 5.3 (CDN, loaded in includes/header.php /
+   footer.php). Bootstrap's own CSS variables (--bs-*) are re-themed wherever
+   possible, so existing markup (btn-primary, badge bg-*, table-hover, card
+   shadow-sm, alerts, forms ...) picks up the new look with NO PHP changes.
 
-/* ---------------- 1. Brand palette & base variables ---------------- */
+   TABLE OF CONTENTS
+    1. Design tokens (palette, radii, shadows, Bootstrap overrides)
+    2. Base & typography
+    3. Navbar (+ active link state)
+    4. Sidebar (optional layout component)
+    5. Footer
+    6. Cards
+    7. Dashboard stat cards   (.stat-card)
+    8. Case tracking stepper  (.tracking-container)
+    9. Tables
+   10. Status badges          (.badge-pending ... + Bootstrap bg-* mapping)
+   11. Buttons
+   12. Forms
+   13. File upload / evidence containers
+   14. Modals
+   15. Alerts, dropdowns, accordion, progress, list groups
+   16. Page-specific polish (login/register, homepage, detail pages)
+   17. Accessibility helpers
+   18. Responsive adjustments
+   19. Reduced-motion preferences
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. DESIGN TOKENS
+   ========================================================================== */
 :root {
-    --brand-navy: #1e2761;
-    --brand-navy-dark: #161c4d;
-    --brand-navy-soft: #eaf1fc;
-    --brand-gold: #c9a227;
+    /* Slate scale: authority / security feel */
+    --brand-950: #020617;
+    --brand-900: #0f172a;
+    --brand-800: #1e293b;
+    --brand-700: #334155;
+    --brand-600: #475569;
+    --brand-500: #64748b;
+    --brand-400: #94a3b8;
+    --brand-300: #cbd5e1;
+    --brand-200: #e2e8f0;
+    --brand-100: #f1f5f9;
+    --brand-50:  #f8fafc;
 
-    /* Re-theme Bootstrap's own variables */
-    --bs-primary: var(--brand-navy);
-    --bs-primary-rgb: 30, 39, 97;
-    --bs-link-color: var(--brand-navy);
-    --bs-link-color-rgb: 30, 39, 97;
-    --bs-link-hover-color: var(--brand-navy-dark);
-    --bs-link-hover-color-rgb: 22, 28, 77;
+    /* Secondary highlight (links, focus, active states) */
+    --accent:        #2563eb;
+    --accent-hover:  #1d4ed8;
+    --accent-light:  #60a5fa;                  /* accent on dark backgrounds */
+    --accent-soft:   #dbeafe;
+    --accent-ring:   rgba(37, 99, 235, 0.22);
 
-    --bs-success: #1e7a4c;
-    --bs-success-rgb: 30, 122, 76;
-    --bs-danger: #b3261e;
-    --bs-danger-rgb: 179, 38, 30;
-    --bs-warning: #b7791f;
-    --bs-warning-rgb: 183, 121, 31;
-    --bs-info: #2f6f8f;
-    --bs-info-rgb: 47, 111, 143;
-    --bs-secondary: #5b6072;
-    --bs-secondary-rgb: 91, 96, 114;
-    --bs-dark: var(--brand-navy);
-    --bs-dark-rgb: 30, 39, 97;
+    /* Semantic colors */
+    --c-success: #16a34a;
+    --c-danger:  #dc2626;
+    --c-warning: #d97706;
+    --c-info:    #0284c7;
 
-    --bs-body-font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --bs-body-color: #22273a;
-    --bs-body-bg: #f6f7fb;
+    /* Soft status palette (badges) */
+    --soft-pending-bg:       #fef3c7;  --soft-pending-fg:       #92400e;  --soft-pending-bd:       #fde68a;
+    --soft-verified-bg:      #e0f2fe;  --soft-verified-fg:      #075985;  --soft-verified-bd:      #bae6fd;
+    --soft-investigating-bg: #dbeafe;  --soft-investigating-fg: #1e40af;  --soft-investigating-bd: #bfdbfe;
+    --soft-resolved-bg:      #dcfce7;  --soft-resolved-fg:      #166534;  --soft-resolved-bd:      #bbf7d0;
+    --soft-closed-bg:        #e2e8f0;  --soft-closed-fg:        #334155;  --soft-closed-bd:        #cbd5e1;
+    --soft-rejected-bg:      #fee2e2;  --soft-rejected-fg:      #991b1b;  --soft-rejected-bd:      #fecaca;
 
-    --bs-border-radius: 0.5rem;
-    --bs-border-radius-sm: 0.375rem;
-    --bs-border-radius-lg: 0.65rem;
+    /* Shape & elevation */
+    --radius-sm:   8px;
+    --radius-md:   10px;
+    --radius-card: 14px;
+    --radius-xl:   16px;
+    --shadow-micro: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --shadow-hover: 0 12px 24px rgba(15, 23, 42, 0.10);
+    --shadow-pop:   0 12px 28px rgba(15, 23, 42, 0.14);
 
-    --bs-box-shadow-sm: 0 1px 3px rgba(20, 24, 55, 0.08);
-    --bs-box-shadow: 0 4px 12px rgba(20, 24, 55, 0.08);
+    /* ---- Bootstrap variable overrides ---- */
+    --bs-primary: var(--accent);
+    --bs-primary-rgb: 37, 99, 235;
+    --bs-link-color: var(--accent);
+    --bs-link-color-rgb: 37, 99, 235;
+    --bs-link-hover-color: var(--accent-hover);
+    --bs-link-hover-color-rgb: 29, 78, 216;
+
+    --bs-success: var(--c-success);   --bs-success-rgb: 22, 163, 74;
+    --bs-danger:  var(--c-danger);    --bs-danger-rgb: 220, 38, 38;
+    --bs-warning: var(--c-warning);   --bs-warning-rgb: 217, 119, 6;
+    --bs-info:    var(--c-info);      --bs-info-rgb: 2, 132, 199;
+    --bs-secondary: var(--brand-500); --bs-secondary-rgb: 100, 116, 139;
+    --bs-secondary-color: var(--brand-500);
+    --bs-dark: var(--brand-900);      --bs-dark-rgb: 15, 23, 42;
+    --bs-light: var(--brand-50);      --bs-light-rgb: 248, 250, 252;
+
+    --bs-body-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+                           "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    --bs-body-font-size: 0.95rem;
+    --bs-body-line-height: 1.6;
+    --bs-body-color: var(--brand-800);
+    --bs-body-bg: var(--brand-100);
+    --bs-border-color: var(--brand-200);
+
+    --bs-border-radius: var(--radius-md);
+    --bs-border-radius-sm: var(--radius-sm);
+    --bs-border-radius-lg: var(--radius-card);
+    --bs-border-radius-xl: var(--radius-xl);
+
+    /* "shadow-sm" is used on almost every card in the markup */
+    --bs-box-shadow-sm: 0 0 0 1px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.08);
+    --bs-box-shadow: var(--shadow-micro);
+    --bs-backdrop-bg: var(--brand-900);
 }
 
-/* ---------------- 2. Base layout ---------------- */
+
+/* ==========================================================================
+   2. BASE & TYPOGRAPHY
+   ========================================================================== */
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
 body {
-    background-color: var(--bs-body-bg);
+    background-color: var(--brand-100);
+    color: var(--brand-800);
+    letter-spacing: -0.005em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
 .app-main {
-    background-color: var(--bs-body-bg);
+    background-color: var(--brand-100);
 }
 
-a {
-    text-decoration: none;
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    color: var(--brand-900);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
 }
+
+h1.h3 { font-size: 1.6rem; }
+
+.text-muted { color: var(--brand-500) !important; }
+
+a { text-decoration: none; }
 
 a.dropdown-item,
 a.list-group-item,
@@ -70,127 +155,489 @@ a.navbar-brand {
     text-decoration: none;
 }
 
-h1, h2, h3, h4, h5, h6 {
-    color: var(--brand-navy);
+/* Definition lists on report detail pages */
+dl.row > dt,
+dl > dt.small {
+    color: var(--brand-500);
     font-weight: 600;
+    font-size: 0.85rem;
 }
 
-/* ---------------- 3. Navbar ---------------- */
+dl.row > dd,
+dl > dd {
+    color: var(--brand-800);
+}
+
+hr { border-color: var(--brand-200); opacity: 1; }
+
+
+/* ==========================================================================
+   3. NAVBAR
+   ========================================================================== */
 .navbar.bg-dark {
-    background-color: var(--brand-navy) !important;
-    box-shadow: 0 2px 10px rgba(20, 24, 55, 0.18);
+    background-color: var(--brand-900) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.22);
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
 }
 
 .navbar .navbar-brand {
-    letter-spacing: 0.03em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
 }
 
 .navbar .navbar-brand i {
-    color: var(--brand-gold);
+    color: var(--accent-light);
 }
 
 .navbar-dark .navbar-nav .nav-link {
-    color: rgba(255, 255, 255, 0.85);
-    transition: color 0.15s ease;
+    color: rgba(226, 232, 240, 0.78);
+    font-weight: 500;
+    font-size: 0.92rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .navbar-dark .navbar-nav .nav-link:hover,
-.navbar-dark .navbar-nav .nav-link:focus,
-.navbar-dark .navbar-nav .nav-link.active {
+.navbar-dark .navbar-nav .nav-link:focus {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+/* Active page highlight. Apply .active (or aria-current="page") to a nav-link. */
+.navbar-dark .navbar-nav .nav-link.active,
+.navbar-dark .navbar-nav .nav-link[aria-current="page"] {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 -2px 0 var(--accent-light);
+}
+
+.navbar-dark .navbar-toggler {
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+.navbar-dark .navbar-toggler:focus {
+    box-shadow: 0 0 0 0.2rem rgba(96, 165, 250, 0.35);
+}
+
+/* Collapsed (mobile) menu spacing */
+@media (max-width: 991.98px) {
+    .navbar-dark .navbar-nav {
+        padding-top: 0.75rem;
+        gap: 0.15rem;
+    }
+}
+
+
+/* ==========================================================================
+   4. SIDEBAR  (optional layout component for future dashboards)
+   ========================================================================== */
+.sidebar {
+    width: 260px;
+    min-height: 100vh;
+    padding: 1.25rem 0.75rem;
+    background-color: var(--brand-900);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 1px 0 0 rgba(255, 255, 255, 0.04), 4px 0 16px rgba(15, 23, 42, 0.18);
+}
+
+.sidebar-heading {
+    padding: 0.75rem 0.85rem 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand-500);
+}
+
+.sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    color: var(--brand-400);
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.06);
     color: #ffffff;
 }
 
-.navbar-dark .navbar-nav .dropdown-menu {
-    border: none;
-    box-shadow: var(--bs-box-shadow);
+.sidebar .nav-link.active,
+.sidebar .nav-link[aria-current="page"] {
+    background-color: rgba(37, 99, 235, 0.18);
+    color: #ffffff;
+    box-shadow: inset 3px 0 0 var(--accent-light);
 }
 
-/* ---------------- 4. Footer ---------------- */
+
+/* ==========================================================================
+   5. FOOTER
+   ========================================================================== */
 .app-footer.bg-dark {
-    background-color: var(--brand-navy) !important;
+    background-color: var(--brand-900) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.app-footer {
-    color: rgba(255, 255, 255, 0.75);
+/* footer.php uses .text-light-emphasis (a dark gray in BS 5.3), which is
+   unreadable on a dark background, so it is overridden here. */
+.app-footer,
+.app-footer.text-light-emphasis {
+    color: rgba(226, 232, 240, 0.7) !important;
 }
 
-/* ---------------- 5. Cards ---------------- */
+
+/* ==========================================================================
+   6. CARDS
+   ========================================================================== */
 .card {
-    border: 1px solid rgba(20, 24, 55, 0.06);
+    border: 1px solid var(--brand-200);
+    border-radius: var(--radius-card);
+    background-color: #ffffff;
 }
 
 .card-header {
-    border-bottom: 1px solid rgba(20, 24, 55, 0.08);
-    background-color: #fff;
+    padding: 0.9rem 1.25rem;
+    background-color: #ffffff;
+    border-bottom: 1px solid var(--brand-100);
+    color: var(--brand-800);
+    font-weight: 600;
+}
+
+.card-header:first-child {
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
 }
 
 .card-header.bg-danger {
     border-bottom-color: transparent;
 }
 
-/* ---------------- 6. Buttons ---------------- */
-.btn {
-    font-weight: 500;
-    border-radius: var(--bs-border-radius);
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+.card-body {
+    padding: 1.25rem;
 }
 
-.btn-primary {
-    --bs-btn-bg: var(--brand-navy);
-    --bs-btn-border-color: var(--brand-navy);
-    --bs-btn-hover-bg: var(--brand-navy-dark);
-    --bs-btn-hover-border-color: var(--brand-navy-dark);
-    --bs-btn-active-bg: var(--brand-navy-dark);
-    --bs-btn-active-border-color: var(--brand-navy-dark);
+
+/* ==========================================================================
+   7. DASHBOARD STAT CARDS
+   --------------------------------------------------------------------------
+   New markup:
+     <div class="stat-card">
+       <span class="stat-icon is-warning"><i class="bi bi-hourglass-split"></i></span>
+       <div class="stat-body">
+         <div class="stat-label">Pending</div>
+         <div class="stat-value">12</div>
+         <span class="stat-indicator is-warn">Needs review</span>
+       </div>
+     </div>
+   The existing dashboards (card > card-body > .fs-2.fw-bold) get the same
+   hover lift automatically through the :has() rule at the end of this section.
+   ========================================================================== */
+.stat-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 100%;
+    padding: 1.25rem 1.4rem;
+    background-color: #ffffff;
+    border: 1px solid var(--brand-200);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-micro);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.btn-outline-primary {
-    --bs-btn-color: var(--brand-navy);
-    --bs-btn-border-color: var(--brand-navy);
-    --bs-btn-hover-bg: var(--brand-navy);
-    --bs-btn-hover-border-color: var(--brand-navy);
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--brand-300);
 }
 
-.btn:focus,
-.form-control:focus,
-.form-select:focus {
-    box-shadow: 0 0 0 0.2rem rgba(30, 39, 97, 0.18);
+.stat-icon {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    font-size: 1.4rem;
+    background-color: var(--accent-soft);
+    color: var(--accent);
 }
 
-/* ---------------- 7. Forms ---------------- */
-.form-control,
-.form-select {
-    border-radius: var(--bs-border-radius-sm);
-    border-color: rgba(20, 24, 55, 0.18);
+.stat-icon.is-warning { background-color: var(--soft-pending-bg);  color: var(--soft-pending-fg); }
+.stat-icon.is-info    { background-color: var(--soft-verified-bg); color: var(--soft-verified-fg); }
+.stat-icon.is-success { background-color: var(--soft-resolved-bg); color: var(--soft-resolved-fg); }
+.stat-icon.is-danger  { background-color: var(--soft-rejected-bg); color: var(--soft-rejected-fg); }
+.stat-icon.is-dark    { background-color: var(--brand-800);        color: #ffffff; }
+
+.stat-body {
+    min-width: 0;
 }
 
-.form-control:focus,
-.form-select:focus {
-    border-color: var(--brand-navy);
+.stat-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--brand-500);
 }
 
-.form-label {
-    font-weight: 500;
-    color: #3a3f55;
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--brand-900);
+    font-variant-numeric: tabular-nums;
 }
 
-.form-text {
-    color: #6b7290;
+/* Small status indicator pill under the metric */
+.stat-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background-color: var(--brand-100);
+    color: var(--brand-600);
 }
 
-/* ---------------- 8. Tables ---------------- */
+.stat-indicator::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+}
+
+.stat-indicator.is-up   { background-color: var(--soft-resolved-bg); color: var(--soft-resolved-fg); }
+.stat-indicator.is-down { background-color: var(--soft-rejected-bg); color: var(--soft-rejected-fg); }
+.stat-indicator.is-warn { background-color: var(--soft-pending-bg);  color: var(--soft-pending-fg); }
+
+/* Existing dashboard cards: label + number typography */
+.card .text-uppercase.text-muted.small {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+}
+
+.card .fs-2.fw-bold {
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Existing dashboard cards: hover lift (progressive enhancement via :has) */
+@supports selector(:has(*)) {
+    .card:has(> .card-body > .fs-2.fw-bold) {
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-micro) !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:has(> .card-body > .fs-2.fw-bold):hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-hover) !important;
+        border-color: var(--brand-300);
+    }
+}
+
+
+/* ==========================================================================
+   8. CASE TRACKING STEPPER
+   --------------------------------------------------------------------------
+   Pending -> Verified -> Under Investigation -> Resolved -> Closed
+
+   Markup:
+     <div class="tracking-container">
+       <ol class="tracking-steps">
+         <li class="tracking-step completed">
+           <span class="step-circle"><i class="bi bi-check-lg"></i></span>
+           <span class="step-label">Pending</span>
+           <span class="step-meta">Mar 12, 2026</span>
+         </li>
+         <li class="tracking-step active"> ... Under Investigation ... </li>
+         <li class="tracking-step pending"> ... Resolved ... </li>
+       </ol>
+     </div>
+   State classes: .completed (green) | .active (glowing accent) | .pending
+   (muted). Optional: .rejected (red) for a rejected report.
+   The line AFTER a step is green when that step is completed.
+   ========================================================================== */
+.tracking-container {
+    --step-size: 44px;     /* circle diameter */
+    --step-gap: 6px;       /* space between circle and connector */
+    padding: 1.75rem 1.5rem;
+    background-color: #ffffff;
+    border: 1px solid var(--brand-200);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-micro);
+}
+
+.tracking-steps {
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tracking-step {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    text-align: center;
+}
+
+/* Circle */
+.step-circle {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: var(--step-size);
+    height: var(--step-size);
+    border: 3px solid var(--brand-200);
+    border-radius: 50%;
+    background-color: #ffffff;
+    color: var(--brand-400);
+    font-size: 1.2rem;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.step-label {
+    margin-top: 0.75rem;
+    padding: 0 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--brand-500);
+}
+
+.step-meta {
+    margin-top: 0.15rem;
+    font-size: 0.75rem;
+    color: var(--brand-400);
+}
+
+/* Connector line to the NEXT step */
+.tracking-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: calc(var(--step-size) / 2 - 2px);
+    left: calc(50% + var(--step-size) / 2 + var(--step-gap));
+    width: calc(100% - var(--step-size) - 2 * var(--step-gap));
+    height: 4px;
+    border-radius: 2px;
+    background-color: var(--brand-200);
+}
+
+/* ---- Completed: vibrant solid green ---- */
+.tracking-step.completed .step-circle {
+    background-color: var(--c-success);
+    border-color: var(--c-success);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.35);
+}
+
+.tracking-step.completed .step-label { color: var(--brand-800); }
+.tracking-step.completed::after      { background-color: var(--c-success); }
+
+/* ---- Active: glowing accent ring ---- */
+.tracking-step.active .step-circle {
+    background-color: #ffffff;
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 0 5px var(--accent-ring);
+    animation: tracking-glow 2.4s ease-out infinite;
+}
+
+.tracking-step.active .step-label {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.tracking-step.active::after {
+    background: linear-gradient(90deg, var(--accent) 0%, var(--brand-200) 100%);
+}
+
+/* ---- Pending: muted (default look, explicit class for clarity) ---- */
+.tracking-step.pending .step-circle {
+    border-color: var(--brand-200);
+    color: var(--brand-400);
+}
+
+/* ---- Rejected (optional modifier) ---- */
+.tracking-step.rejected .step-circle {
+    background-color: var(--c-danger);
+    border-color: var(--c-danger);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.30);
+}
+
+.tracking-step.rejected .step-label { color: var(--soft-rejected-fg); }
+
+@keyframes tracking-glow {
+    0%   { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.30); }
+    70%  { box-shadow: 0 0 0 11px rgba(37, 99, 235, 0); }
+    100% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0); }
+}
+
+
+/* ==========================================================================
+   9. TABLES
+   ========================================================================== */
 .table {
-    --bs-table-hover-bg: rgba(30, 39, 97, 0.035);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--brand-200);
+    --bs-table-hover-bg: var(--brand-100);
+    --bs-table-hover-color: var(--brand-900);
+    margin-bottom: 0;
+    color: var(--brand-800);
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.85rem 1rem;
+    border-bottom-width: 1px;
+}
+
+.table th:first-child,
+.table td:first-child {
+    padding-left: 1.25rem;
+}
+
+.table th:last-child,
+.table td:last-child {
+    padding-right: 1.25rem;
+}
+
+.table thead.table-light {
+    --bs-table-bg: var(--brand-50);
+    --bs-table-color: var(--brand-500);
+    --bs-table-border-color: var(--brand-200);
 }
 
 .table thead.table-light th {
-    background-color: #f1f3f9;
-    color: #3a3f55;
+    background-color: var(--brand-50);
+    color: var(--brand-500);
+    font-size: 0.72rem;
     font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.04em;
-    border-bottom-width: 1px;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--brand-200);
 }
 
 .table td,
@@ -198,82 +645,657 @@ h1, h2, h3, h4, h5, h6 {
     vertical-align: middle;
 }
 
-/* ---------------- 9. Badges / status pills ---------------- */
+.table-hover > tbody > tr > * {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Table sitting inside a card: remove the double border at the edges */
+.card > .card-body.p-0 > .table-responsive > .table > tbody > tr:last-child > * {
+    border-bottom: 0;
+}
+
+
+/* ==========================================================================
+   10. STATUS BADGES (soft / subtle)
+   --------------------------------------------------------------------------
+   a) New explicit classes:  .badge-pending  .badge-verified
+      .badge-investigating  .badge-resolved  .badge-closed  .badge-rejected
+   b) Existing markup uses Bootstrap's bg-* classes (via PHP
+      get_status_badge_class()), so those are mapped to the same soft palette
+      below -- no PHP change needed.
+   ========================================================================== */
 .badge {
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 0.4em 0.7em;
+    padding: 0.4em 0.8em;
     border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
 }
 
-/* ---------------- 10. Alerts ---------------- */
+.badge-pending,
+.badge-verified,
+.badge-investigating,
+.badge-resolved,
+.badge-closed,
+.badge-rejected {
+    display: inline-block;
+    padding: 0.4em 0.8em;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    vertical-align: baseline;
+}
+
+.badge-pending       { background-color: var(--soft-pending-bg);       color: var(--soft-pending-fg);       border-color: var(--soft-pending-bd); }
+.badge-verified      { background-color: var(--soft-verified-bg);      color: var(--soft-verified-fg);      border-color: var(--soft-verified-bd); }
+.badge-investigating { background-color: var(--soft-investigating-bg); color: var(--soft-investigating-fg); border-color: var(--soft-investigating-bd); }
+.badge-resolved      { background-color: var(--soft-resolved-bg);      color: var(--soft-resolved-fg);      border-color: var(--soft-resolved-bd); }
+.badge-closed        { background-color: var(--soft-closed-bg);        color: var(--soft-closed-fg);        border-color: var(--soft-closed-bd); }
+.badge-rejected      { background-color: var(--soft-rejected-bg);      color: var(--soft-rejected-fg);      border-color: var(--soft-rejected-bd); }
+
+/* Mapping of existing Bootstrap badge classes to the soft palette */
+.badge.bg-warning   { background-color: var(--soft-pending-bg) !important;       color: var(--soft-pending-fg) !important;       border: 1px solid var(--soft-pending-bd); }
+.badge.bg-info      { background-color: var(--soft-verified-bg) !important;      color: var(--soft-verified-fg) !important;      border: 1px solid var(--soft-verified-bd); }
+.badge.bg-primary   { background-color: var(--soft-investigating-bg) !important; color: var(--soft-investigating-fg) !important; border: 1px solid var(--soft-investigating-bd); }
+.badge.bg-success   { background-color: var(--soft-resolved-bg) !important;      color: var(--soft-resolved-fg) !important;      border: 1px solid var(--soft-resolved-bd); }
+.badge.bg-danger    { background-color: var(--soft-rejected-bg) !important;      color: var(--soft-rejected-fg) !important;      border: 1px solid var(--soft-rejected-bd); }
+.badge.bg-secondary { background-color: var(--soft-closed-bg) !important;        color: var(--soft-closed-fg) !important;        border: 1px solid var(--soft-closed-bd); }
+
+/* The unread-notification bubble on the navbar bell stays solid for visibility */
+.navbar .badge.bg-danger {
+    background-color: var(--c-danger) !important;
+    color: #ffffff !important;
+    border: 0;
+}
+
+
+/* ==========================================================================
+   11. BUTTONS
+   ========================================================================== */
+.btn {
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    letter-spacing: 0;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+                box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+/* Primary: dark authority button */
+.btn-primary {
+    --bs-btn-color: #ffffff;
+    --bs-btn-bg: var(--brand-800);
+    --bs-btn-border-color: var(--brand-800);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--brand-900);
+    --bs-btn-hover-border-color: var(--brand-900);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: var(--brand-950);
+    --bs-btn-active-border-color: var(--brand-950);
+    --bs-btn-focus-shadow-rgb: 30, 41, 59;
+    --bs-btn-disabled-bg: var(--brand-600);
+    --bs-btn-disabled-border-color: var(--brand-600);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.25);
+}
+
+.btn-primary:hover {
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--brand-800);
+    --bs-btn-border-color: var(--brand-300);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--brand-800);
+    --bs-btn-hover-border-color: var(--brand-800);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: var(--brand-900);
+    --bs-btn-active-border-color: var(--brand-900);
+    --bs-btn-focus-shadow-rgb: 30, 41, 59;
+}
+
+.btn-outline-secondary {
+    --bs-btn-color: var(--brand-600);
+    --bs-btn-border-color: var(--brand-300);
+    --bs-btn-hover-color: var(--brand-900);
+    --bs-btn-hover-bg: var(--brand-100);
+    --bs-btn-hover-border-color: var(--brand-400);
+    --bs-btn-active-color: var(--brand-900);
+    --bs-btn-active-bg: var(--brand-200);
+    --bs-btn-active-border-color: var(--brand-400);
+}
+
+.btn-outline-danger {
+    --bs-btn-color: var(--c-danger);
+    --bs-btn-border-color: #fca5a5;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--c-danger);
+    --bs-btn-hover-border-color: var(--c-danger);
+}
+
+/* Optional bright call-to-action */
+.btn-accent {
+    --bs-btn-color: #ffffff;
+    --bs-btn-bg: var(--accent);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--accent-hover);
+    --bs-btn-hover-border-color: var(--accent-hover);
+    --bs-btn-focus-shadow-rgb: 37, 99, 235;
+}
+
+.btn-sm {
+    border-radius: var(--radius-sm);
+}
+
+
+/* ==========================================================================
+   12. FORMS
+   ========================================================================== */
+.form-label {
+    margin-bottom: 0.4rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--brand-700);
+}
+
+.form-control,
+.form-select {
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--brand-300);
+    border-radius: var(--radius-md);
+    background-color: #ffffff;
+    color: var(--brand-900);
+    font-size: 0.95rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.form-control::placeholder {
+    color: var(--brand-400);
+}
+
+.form-control:hover:not(:focus):not(:disabled),
+.form-select:hover:not(:focus):not(:disabled) {
+    border-color: var(--brand-400);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-ring);
+    background-color: #ffffff;
+}
+
+.form-control:disabled,
+.form-select:disabled {
+    background-color: var(--brand-100);
+    color: var(--brand-500);
+}
+
+.form-control-sm,
+.form-select-sm {
+    border-radius: var(--radius-sm);
+}
+
+.form-text {
+    color: var(--brand-500);
+    font-size: 0.8rem;
+}
+
+.form-check-input {
+    border-color: var(--brand-400);
+}
+
+.form-check-input:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+.form-check-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-ring);
+}
+
+.form-check-label {
+    color: var(--brand-700);
+}
+
+.input-group-text {
+    border-color: var(--brand-300);
+    background-color: var(--brand-50);
+    color: var(--brand-600);
+}
+
+/* Validation (works with the .was-validated flow in assets/js/script.js) */
+.form-control.is-invalid:focus,
+.was-validated .form-control:invalid:focus,
+.form-select.is-invalid:focus,
+.was-validated .form-select:invalid:focus {
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
+}
+
+
+/* ==========================================================================
+   13. FILE UPLOAD / EVIDENCE CONTAINERS
+   ========================================================================== */
+/* Native file input (submit_report.php -> #evidence) */
+input[type="file"].form-control {
+    padding: 0.55rem;
+    border: 2px dashed var(--brand-300);
+    background-color: var(--brand-50);
+    color: var(--brand-600);
+    cursor: pointer;
+}
+
+input[type="file"].form-control:hover:not(:disabled) {
+    border-color: var(--accent);
+    background-color: #eff6ff;
+}
+
+input[type="file"].form-control::file-selector-button {
+    margin: -0.55rem 0.85rem -0.55rem -0.55rem;
+    padding: 0.6rem 1.1rem;
+    border: 0;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    background-color: var(--brand-800);
+    color: #ffffff;
+    font-weight: 600;
+    transition: background-color 0.15s ease;
+}
+
+input[type="file"].form-control:hover:not(:disabled):not([readonly])::file-selector-button {
+    background-color: var(--brand-900);
+}
+
+/* Optional drop-zone container */
+.file-upload {
+    padding: 2rem 1.5rem;
+    border: 2px dashed var(--brand-300);
+    border-radius: var(--radius-card);
+    background-color: var(--brand-50);
+    text-align: center;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.file-upload:hover,
+.file-upload.is-dragover {
+    border-color: var(--accent);
+    background-color: #eff6ff;
+}
+
+.file-upload-icon {
+    margin-bottom: 0.5rem;
+    font-size: 2.2rem;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.file-upload-title { font-weight: 600; color: var(--brand-800); }
+.file-upload-hint  { font-size: 0.8rem; color: var(--brand-500); }
+
+/* Selected / uploaded evidence item */
+.file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.25rem 0.35rem 0.25rem 0;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--brand-200);
+    border-radius: 999px;
+    background-color: #ffffff;
+    font-size: 0.82rem;
+    color: var(--brand-700);
+}
+
+.file-chip i { color: var(--accent); }
+
+
+/* ==========================================================================
+   14. MODALS
+   ========================================================================== */
+.modal-content {
+    border: 0;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.25);
+}
+
+.modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 0;
+    background-color: var(--brand-900);
+    color: #ffffff;
+}
+
+.modal-header .modal-title {
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.8;
+}
+
+.modal-header .btn-close:hover { opacity: 1; }
+
+.modal-body { padding: 1.25rem; }
+
+.modal-footer {
+    border-top: 1px solid var(--brand-200);
+    background-color: var(--brand-50);
+}
+
+.modal-backdrop.show { opacity: 0.55; }
+
+
+/* ==========================================================================
+   15. ALERTS, DROPDOWNS, ACCORDION, PROGRESS, LIST GROUPS
+   ========================================================================== */
+/* ---- Alerts ---- */
 .alert {
-    border: none;
+    border: 0;
     border-left: 4px solid transparent;
-    border-radius: var(--bs-border-radius-sm);
+    border-radius: var(--radius-md);
+    font-weight: 500;
 }
 
-.alert-success { border-left-color: var(--bs-success); }
-.alert-danger  { border-left-color: var(--bs-danger); }
-.alert-warning { border-left-color: var(--bs-warning); }
-.alert-info    { border-left-color: var(--bs-info); }
+.alert-success { border-left-color: var(--c-success); }
+.alert-danger  { border-left-color: var(--c-danger); }
+.alert-warning { border-left-color: var(--c-warning); }
+.alert-info    { border-left-color: var(--c-info); }
 
-/* ---------------- 11. Accordion (Help & Resources FAQ) ---------------- */
+/* ---- Dropdowns ---- */
+.dropdown-menu {
+    padding: 0.4rem;
+    border: 1px solid var(--brand-200);
+    border-radius: 12px;
+    box-shadow: var(--shadow-pop);
+}
+
+.navbar-dark .navbar-nav .dropdown-menu {
+    margin-top: 0.5rem;
+}
+
+.dropdown-item {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.92rem;
+    color: var(--brand-700);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: var(--brand-100);
+    color: var(--brand-900);
+}
+
+.dropdown-item.text-danger:hover {
+    background-color: var(--soft-rejected-bg);
+}
+
+/* ---- Accordion (Help & Resources FAQ) ---- */
+.accordion {
+    --bs-accordion-border-color: var(--brand-200);
+    --bs-accordion-border-radius: var(--radius-md);
+    --bs-accordion-inner-border-radius: calc(var(--radius-md) - 1px);
+}
+
+.accordion-button {
+    font-weight: 600;
+    color: var(--brand-800);
+}
+
 .accordion-button:not(.collapsed) {
-    background-color: var(--brand-navy-soft);
-    color: var(--brand-navy);
+    background-color: var(--accent-soft);
+    color: var(--brand-900);
     box-shadow: none;
 }
 
 .accordion-button:focus {
-    box-shadow: 0 0 0 0.2rem rgba(30, 39, 97, 0.15);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-ring);
 }
 
-/* ---------------- 12. Dashboard stat cards ---------------- */
-.card .fs-2.fw-bold {
-    letter-spacing: -0.01em;
-}
-
+/* ---- Progress bars (admin category stats) ---- */
 .progress {
-    background-color: #eef0f6;
+    height: 8px;
     border-radius: 999px;
+    background-color: var(--brand-100);
 }
 
 .progress-bar {
-    background-color: var(--brand-navy);
+    border-radius: 999px;
+    background-color: var(--accent);
 }
 
-/* ---------------- 13. Login / Register cards ---------------- */
-.card.shadow-sm.border-0 h1.h3 {
-    color: var(--brand-navy);
-}
-
-/* ---------------- 14. Homepage hero & sections ---------------- */
-.display-6 i.bi {
-    color: var(--brand-navy);
-}
-
-section .display-6.text-primary,
-section .fs-3.text-primary {
-    color: var(--brand-navy) !important;
-}
-
-/* ---------------- 15. Misc list items (notifications, evidence) ---------------- */
+/* ---- List groups (notifications, evidence) ---- */
 .list-group-item {
-    border-color: rgba(20, 24, 55, 0.08);
+    padding: 0.85rem 1.1rem;
+    border-color: var(--brand-100);
+    color: var(--brand-800);
 }
 
-/* ---------------- 16. Responsive tweaks ---------------- */
+/* Unread notifications are rendered with .bg-light: add an accent edge */
+.list-group-item.bg-light {
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+
+/* ==========================================================================
+   16. PAGE-SPECIFIC POLISH
+   ========================================================================== */
+/* Login / Register cards */
+.card.shadow-sm.border-0 h1.h3 {
+    color: var(--brand-900);
+}
+
+/* Homepage hero + feature icons */
+.display-6 {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--brand-900);
+}
+
+.display-6 i.bi,
+.fs-3 i.bi {
+    color: var(--accent);
+}
+
+.lead {
+    font-weight: 400;
+    color: var(--brand-600);
+}
+
+/* Emergency contact card on the homepage / help page */
+.card.border-danger {
+    border-color: #fca5a5 !important;
+}
+
+.card-header.bg-danger {
+    background-color: var(--c-danger) !important;
+}
+
+/* Collapsible detail rows (admin/reports.php) */
+tr.collapse > td.bg-light,
+tr.collapsing > td.bg-light {
+    background-color: var(--brand-50) !important;
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+
+/* ==========================================================================
+   17. ACCESSIBILITY HELPERS
+   ========================================================================== */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible {
+    outline: none;   /* these already show their own focus ring */
+}
+
+::selection {
+    background-color: var(--accent-soft);
+    color: var(--brand-900);
+}
+
+
+/* ==========================================================================
+   18. RESPONSIVE ADJUSTMENTS
+   ========================================================================== */
+/* ---- Tablet (<= 991.98px) ---- */
+@media (max-width: 991.98px) {
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+    }
+
+    .tracking-container {
+        --step-size: 38px;
+        padding: 1.5rem 1rem;
+    }
+
+    .step-circle { font-size: 1rem; }
+    .step-label  { font-size: 0.8rem; }
+    .step-meta   { font-size: 0.7rem; }
+}
+
+/* ---- Mobile (<= 767.98px) ---- */
 @media (max-width: 767.98px) {
-    .fs-2.fw-bold {
-        font-size: 1.5rem !important;
+    body { font-size: 0.92rem; }
+
+    h1.h3 { font-size: 1.35rem; }
+
+    .card-body { padding: 1rem; }
+
+    .card-header { padding: 0.8rem 1rem; }
+
+    .fs-2.fw-bold,
+    .stat-value {
+        font-size: 1.6rem !important;
     }
 
-    .card-body {
-        padding: 1rem;
+    .stat-card {
+        padding: 1rem 1.1rem;
     }
 
-    .display-6 {
-        font-size: 1.75rem;
+    .stat-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 1.2rem;
     }
+
+    .display-6 { font-size: 1.75rem; }
+
+    .table > :not(caption) > * > * {
+        padding: 0.7rem 0.75rem;
+    }
+
+    /* Tracking stepper: stack vertically with a vertical connector */
+    .tracking-container {
+        --step-size: 40px;
+        padding: 1.25rem 1rem;
+    }
+
+    .tracking-steps {
+        flex-direction: column;
+    }
+
+    .tracking-step {
+        display: grid;
+        grid-template-columns: var(--step-size) 1fr;
+        column-gap: 1rem;
+        align-items: start;
+        justify-items: start;
+        padding-bottom: 1.5rem;
+        text-align: left;
+    }
+
+    .tracking-step:last-child {
+        padding-bottom: 0;
+    }
+
+    .step-circle {
+        grid-row: 1 / span 2;
+    }
+
+    .step-label {
+        margin-top: 0.55rem;
+        padding: 0;
+        font-size: 0.9rem;
+    }
+
+    .step-meta {
+        margin-top: 0;
+    }
+
+    .tracking-step:not(:last-child)::after {
+        top: calc(var(--step-size) + var(--step-gap));
+        bottom: var(--step-gap);
+        left: calc(var(--step-size) / 2 - 2px);
+        width: 4px;
+        height: auto;
+    }
+
+    .tracking-step.active::after {
+        background: linear-gradient(180deg, var(--accent) 0%, var(--brand-200) 100%);
+    }
+}
+
+
+/* ==========================================================================
+   19. REDUCED-MOTION PREFERENCES
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    .tracking-step.active .step-circle {
+        animation: none;
+    }
+
+    .stat-card,
+    .btn,
+    .step-circle {
+        transition: none;
+    }
+
+    .stat-card:hover {
+        transform: none;
+    }
+
+    @supports selector(:has(*)) {
+        .card:has(> .card-body > .fs-2.fw-bold) {
+            transition: none;
+        }
+
+        .card:has(> .card-body > .fs-2.fw-bold):hover {
+            transform: none;
+        }
+    }
+}
+
+/* Stat Card Fix */
+.stat-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 100%;
+    padding: 1.25rem 1.4rem;
+    background-color: #ffffff;
+    border: 1px solid var(--brand-200, #cbd5e1);
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
